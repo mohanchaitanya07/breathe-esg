@@ -1,6 +1,6 @@
 from django.core.management.base import BaseCommand
 
-from core.models import EmissionFactor
+from core.models import EmissionFactor, Tenant
 
 
 FACTORS = [
@@ -17,11 +17,28 @@ FACTORS = [
     ("rail", "km", 0.035, "DEFRA 2024", 2024),
 ]
 
+TENANTS = [
+    (1, "ACME-001", "acme-001"),
+    (2, "GLOBEX-002", "globex-002"),
+]
+
 
 class Command(BaseCommand):
-    help = "Populate EmissionFactor with the MVP set (idempotent)."
+    help = "Populate demo tenants and emission factors (idempotent)."
 
     def handle(self, *args, **options):
+        tenants_created = 0
+        tenants_updated = 0
+        for tenant_id, name, slug in TENANTS:
+            _, was_created = Tenant.objects.update_or_create(
+                id=tenant_id,
+                defaults={"name": name, "slug": slug},
+            )
+            if was_created:
+                tenants_created += 1
+            else:
+                tenants_updated += 1
+
         created = 0
         updated = 0
         for category, unit, value, citation, year in FACTORS:
@@ -38,7 +55,8 @@ class Command(BaseCommand):
 
         self.stdout.write(
             self.style.SUCCESS(
-                f"seed_factors done — created={created}, updated={updated}, "
+                f"seed_factors done — tenants created={tenants_created}, "
+                f"tenants updated={tenants_updated}, factors created={created}, updated={updated}, "
                 f"total in table={EmissionFactor.objects.count()}"
             )
         )
